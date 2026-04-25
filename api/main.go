@@ -1,6 +1,8 @@
 package main
 
 import (
+	"api/handler"
+	"api/middleware"
 	"fmt"
 	"io"
 	"log"
@@ -43,6 +45,11 @@ func main() {
 	mux.HandleFunc("/hello", helloHandler)
 	mux.HandleFunc("GET /time", timeHandler)
 	mux.HandleFunc("POST /echo", echoHanlder)
+	mux.HandleFunc("GET /users", handler.ListUsers)
+	mux.HandleFunc("GET /users/{id}", handler.GetUser)
+	mux.Handle("POST /users", middleware.Chain(http.HandlerFunc(handler.ListUsers), middleware.Auth))
+	mux.HandleFunc("DELETE /users/{id}", handler.DeleteUser)
+	mux.HandleFunc("PUT /users/{id}", handler.UpdateUser)
 
 	// Inline route handler
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -50,9 +57,11 @@ func main() {
 		fmt.Fprintln(w, "ok")
 	})
 
+	stack := middleware.Chain(mux, middleware.Logger)
+
 	server := &http.Server{
 		Addr:         ":8080",
-		Handler:      mux,
+		Handler:      stack,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
