@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
@@ -8,7 +9,7 @@ import (
 
 // chain
 func Chain(h http.Handler, middleware ...func(http.Handler) http.Handler) http.Handler {
-	for i := len(middleware) - 1; i > 0; i-- {
+	for i := len(middleware) - 1; i >= 0; i-- {
 		h = middleware[i](h)
 	}
 
@@ -43,5 +44,22 @@ func Auth(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+
+}
+
+// Timeout middleware with context
+func Timeout(duration time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), duration)
+			defer cancel()
+
+			r = r.WithContext(ctx)
+
+			next.ServeHTTP(w, r)
+		})
+
+	}
 
 }
